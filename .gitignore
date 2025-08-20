@@ -32,5 +32,11 @@ dist-ssr
 .env.test.local
 .env.production.local
 
+# Keep production template but ignore actual production env
+.env.production
+
 # Scripts (temporary)
 scripts/
+
+# Vercel
+.vercel
