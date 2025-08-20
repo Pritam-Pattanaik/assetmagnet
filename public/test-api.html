@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        button { margin: 10px; padding: 10px 20px; }
+        .result { margin: 10px 0; padding: 10px; background: #f5f5f5; border-radius: 5px; }
+        .error { background: #ffebee; color: #c62828; }
+        .success { background: #e8f5e8; color: #2e7d32; }
+    </style>
+</head>
+<body>
+    <h1>API Test Page</h1>
+    
+    <button onclick="testHealth()">Test Health</button>
+    <button onclick="testGetServices()">Get Services</button>
+    <button onclick="testCreateService()">Create Test Service</button>
+    
+    <div id="results"></div>
+
+    <script>
+        function addResult(message, isError = false) {
+            const results = document.getElementById('results');
+            const div = document.createElement('div');
+            div.className = `result ${isError ? 'error' : 'success'}`;
+            div.innerHTML = `<strong>${new Date().toLocaleTimeString()}</strong>: ${message}`;
+            results.appendChild(div);
+        }
+
+        async function testHealth() {
+            try {
+                const response = await fetch('/api/health');
+                const data = await response.json();
+                addResult(`Health check: ${JSON.stringify(data)}`);
+            } catch (error) {
+                addResult(`Health check failed: ${error.message}`, true);
+            }
+        }
+
+        async function testGetServices() {
+            try {
+                const response = await fetch('/api/services');
+                const data = await response.json();
+                addResult(`Got ${data.length} services: ${data.map(s => s.title).join(', ')}`);
+            } catch (error) {
+                addResult(`Get services failed: ${error.message}`, true);
+            }
+        }
+
+        async function testCreateService() {
+            try {
+                const testService = {
+                    title: 'Test API Service',
+                    shortDescription: 'Test service created via API',
+                    description: 'This is a test service created to verify the API is working correctly.',
+                    icon: '🧪',
+                    features: ['API Test Feature 1', 'API Test Feature 2'],
+                    category: 'Testing',
+                    status: 'active',
+                    price: {
+                        basic: 100,
+                        premium: 200,
+                        enterprise: 300
+                    },
+                    popularity: 0,
+                    clients: 0,
+                    rating: 0
+                };
+
+                const response = await fetch('/api/services', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(testService)
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${await response.text()}`);
+                }
+
+                const data = await response.json();
+                addResult(`Service created: ${data.title} (ID: ${data.id})`);
+                
+                // Clean up - delete the test service
+                setTimeout(async () => {
+                    try {
+                        await fetch(`/api/services/${data.id}`, { method: 'DELETE' });
+                        addResult(`Test service deleted: ${data.id}`);
+                    } catch (error) {
+                        addResult(`Failed to delete test service: ${error.message}`, true);
+                    }
+                }, 2000);
+                
+            } catch (error) {
+                addResult(`Create service failed: ${error.message}`, true);
+            }
+        }
+
+        // Auto-run health check on load
+        window.onload = () => {
+            testHealth();
+        };
+    </script>
+</body>
+</html>

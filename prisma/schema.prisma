@@ -1,0 +1,323 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Services Table
+model Service {
+  id               String      @id @default(cuid())
+  title            String
+  shortDescription String      @map("short_description")
+  description      String      // Full description
+  icon             String?     // Emoji icon
+  features         String[]    // Array of features
+  category         String
+  status           ServiceStatus @default(ACTIVE)
+  basicPrice       Float?      @map("basic_price")
+  premiumPrice     Float?      @map("premium_price")
+  enterprisePrice  Float?      @map("enterprise_price")
+  popularity       Int?        @default(0)
+  clients          Int?        @default(0)
+  rating           Float?      @default(0)
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+
+  @@map("services")
+}
+
+// Contact Messages Table
+model ContactMessage {
+  id        String            @id @default(cuid())
+  name      String
+  email     String
+  phone     String?
+  subject   String
+  message   String
+  status    ContactStatus     @default(NEW)
+  priority  ContactPriority   @default(MEDIUM)
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+
+  @@map("contact_messages")
+}
+
+// Contact Information Table
+model ContactInfo {
+  id       String      @id @default(cuid())
+  type     ContactType
+  title    String
+  value    String
+  icon     String
+  isActive Boolean     @default(true)
+  order    Int         @default(0)
+
+  @@map("contact_info")
+}
+
+// Global Offices Table
+model GlobalOffice {
+  id             String   @id @default(cuid())
+  name           String
+  address        String
+  city           String
+  country        String
+  phone          String
+  email          String
+  timezone       String
+  isHeadquarters Boolean  @default(false)
+  isActive       Boolean  @default(true)
+  latitude       Float?
+  longitude      Float?
+  workingHours   String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@map("global_offices")
+}
+
+// FAQ Table
+model FAQ {
+  id        String   @id @default(cuid())
+  question  String
+  answer    String
+  category  String
+  order     Int      @default(0)
+  isActive  Boolean  @default(true)
+  tags      String[] // Array of tags
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("faqs")
+}
+
+// Enums
+enum ContactStatus {
+  NEW
+  READ
+  REPLIED
+  ARCHIVED
+}
+
+enum ContactPriority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum ContactType {
+  ADDRESS
+  PHONE
+  EMAIL
+  HOURS
+}
+
+// Users Table
+model User {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  name          String
+  passwordHash  String   @map("password_hash")
+  role          UserRole @default(STUDENT)
+  avatar        String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relationships
+  courses           Course[]
+  enrollments       CourseEnrollment[]
+  jobApplications   JobApplication[]
+  notifications     Notification[]
+
+  @@map("users")
+}
+
+// Courses Table
+model Course {
+  id               String   @id @default(cuid())
+  title            String
+  description      String
+  shortDescription String   @map("short_description")
+  thumbnail        String?
+  price            Float
+  discountPrice    Float?   @map("discount_price")
+  duration         String
+  level            CourseLevel
+  category         String
+  instructorId     String   @map("instructor_id")
+  rating           Float    @default(0)
+  reviewCount      Int      @default(0) @map("review_count")
+  enrollmentCount  Int      @default(0) @map("enrollment_count")
+  isPublished      Boolean  @default(false) @map("is_published")
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  // Relationships
+  instructor    User               @relation(fields: [instructorId], references: [id])
+  modules       CourseModule[]
+  enrollments   CourseEnrollment[]
+
+  @@map("courses")
+}
+
+// Course Modules Table
+model CourseModule {
+  id          String   @id @default(cuid())
+  courseId    String   @map("course_id")
+  title       String
+  description String
+  order       Int
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relationships
+  course  Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  lessons Lesson[]
+
+  @@map("course_modules")
+}
+
+// Lessons Table
+model Lesson {
+  id          String   @id @default(cuid())
+  moduleId    String   @map("module_id")
+  title       String
+  description String
+  videoUrl    String?  @map("video_url")
+  duration    Int      // in minutes
+  order       Int
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relationships
+  module CourseModule @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+
+  @@map("lessons")
+}
+
+// Course Enrollments Table
+model CourseEnrollment {
+  id          String    @id @default(cuid())
+  courseId    String    @map("course_id")
+  studentId   String    @map("student_id")
+  enrolledAt  DateTime  @default(now()) @map("enrolled_at")
+  progress    Float     @default(0)
+  completedAt DateTime? @map("completed_at")
+
+  // Relationships
+  course  Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  student User   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([courseId, studentId])
+  @@map("course_enrollments")
+}
+
+// Jobs Table
+model Job {
+  id               String   @id @default(cuid())
+  title            String
+  description      String
+  requirements     String[]
+  responsibilities String[]
+  location         String
+  type             JobType
+  salaryMin        Int?     @map("salary_min")
+  salaryMax        Int?     @map("salary_max")
+  salaryCurrency   String   @default("USD") @map("salary_currency")
+  category         String
+  department       String
+  experience       String
+  deadline         DateTime?
+  isActive         Boolean  @default(true) @map("is_active")
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  // Relationships
+  applications JobApplication[]
+
+  @@map("jobs")
+}
+
+// Job Applications Table
+model JobApplication {
+  id           String            @id @default(cuid())
+  jobId        String            @map("job_id")
+  applicantId  String            @map("applicant_id")
+  resumeUrl    String?           @map("resume_url")
+  coverLetter  String?           @map("cover_letter")
+  status       ApplicationStatus @default(PENDING)
+  appliedAt    DateTime          @default(now()) @map("applied_at")
+  updatedAt    DateTime          @updatedAt
+
+  // Relationships
+  job       Job  @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  applicant User @relation(fields: [applicantId], references: [id], onDelete: Cascade)
+
+  @@map("job_applications")
+}
+
+// Notifications Table
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String           @map("user_id")
+  title     String
+  message   String
+  type      NotificationType @default(INFO)
+  isRead    Boolean          @default(false) @map("is_read")
+  actionUrl String?          @map("action_url")
+  createdAt DateTime         @default(now())
+
+  // Relationships
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
+}
+
+// Additional Enums
+enum UserRole {
+  ADMIN
+  EDITOR
+  INSTRUCTOR
+  STUDENT
+  APPLICANT
+}
+
+enum CourseLevel {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+}
+
+enum JobType {
+  FULL_TIME
+  PART_TIME
+  CONTRACT
+  REMOTE
+}
+
+enum ApplicationStatus {
+  PENDING
+  REVIEWING
+  SHORTLISTED
+  REJECTED
+  HIRED
+}
+
+enum NotificationType {
+  INFO
+  SUCCESS
+  WARNING
+  ERROR
+}
+
+enum ServiceStatus {
+  ACTIVE
+  INACTIVE
+  DRAFT
+}
