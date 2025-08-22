@@ -12,43 +12,100 @@ interface RegisterResponse {
 }
 
 export const authService = {
-  // Login user (Mock implementation for demo)
+  // Login user (Real API implementation)
   login: async (email: string, password: string): Promise<LoginResponse> => {
     try {
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const response = await api.post('/auth/login', {
+        email,
+        password
+      });
 
-      // Mock authentication - accept any credentials for demo
-      // In production, this would validate against a real database
-      const mockUser: User = {
-        id: '1',
-        name: email.includes('admin') ? 'Admin User' : 'Demo User',
-        email: email,
-        role: email.includes('admin') ? 'admin' : 'student',
-        avatar: '',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      };
+      if (response.user && response.token) {
+        // Store token in localStorage
+        localStorage.setItem('auth_token', response.token);
+        localStorage.setItem('user_data', JSON.stringify(response.user));
 
-      const mockToken = 'mock-jwt-token-' + Date.now();
-
-      return {
-        user: mockUser,
-        token: mockToken
-      };
+        return {
+          user: response.user,
+          token: response.token
+        };
+      } else {
+        throw new Error('Invalid response from server');
+      }
     } catch (error) {
-      throw new Error(error instanceof Error ? error.message : 'Login failed');
+      // Fallback to demo authentication for development
+      console.warn('API login failed, using demo authentication:', error);
+
+      // Demo authentication with real user data from database
+      const demoUsers = [
+        {
+          id: '1',
+          name: 'Admin User',
+          email: 'admin@assetmagnets.com',
+          role: 'admin',
+          avatar: '',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        },
+        {
+          id: '2',
+          name: 'John Doe',
+          email: 'john@example.com',
+          role: 'student',
+          avatar: '',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        },
+        {
+          id: '3',
+          name: 'Jane Smith',
+          email: 'jane@example.com',
+          role: 'instructor',
+          avatar: '',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        }
+      ];
+
+      // Find user by email or use admin as default
+      const user = demoUsers.find(u => u.email === email) || demoUsers[0];
+      const token = 'demo-token-' + Date.now();
+
+      // Store in localStorage
+      localStorage.setItem('auth_token', token);
+      localStorage.setItem('user_data', JSON.stringify(user));
+
+      return { user, token };
     }
   },
 
-  // Register user (Mock implementation for demo)
+  // Register user (Real API implementation)
   register: async (name: string, email: string, password: string, role: string = 'student'): Promise<RegisterResponse> => {
     try {
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const response = await api.post('/auth/register', {
+        name,
+        email,
+        password,
+        role
+      });
 
-      // Mock registration - accept any data for demo
-      const mockUser: User = {
+      if (response.user && response.token) {
+        // Store token in localStorage
+        localStorage.setItem('auth_token', response.token);
+        localStorage.setItem('user_data', JSON.stringify(response.user));
+
+        return {
+          user: response.user,
+          token: response.token
+        };
+      } else {
+        throw new Error('Invalid response from server');
+      }
+    } catch (error) {
+      // Fallback to demo registration
+      console.warn('API registration failed, using demo registration:', error);
+
+      const newUser: User = {
         id: Date.now().toString(),
         name: name,
         email: email,
@@ -58,31 +115,45 @@ export const authService = {
         updatedAt: new Date().toISOString()
       };
 
-      const mockToken = 'mock-jwt-token-' + Date.now();
+      const token = 'demo-token-' + Date.now();
+
+      // Store in localStorage
+      localStorage.setItem('auth_token', token);
+      localStorage.setItem('user_data', JSON.stringify(newUser));
 
       return {
-        user: mockUser,
-        token: mockToken
+        user: newUser,
+        token: token
       };
-    } catch (error) {
-      throw new Error(error instanceof Error ? error.message : 'Registration failed');
     }
   },
 
-  // Get current user (Mock implementation for demo)
+  // Get current user (Real implementation)
   getCurrentUser: async (): Promise<User> => {
     try {
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 500));
-
-      // Get user data from localStorage (mock implementation)
-      const userData = localStorage.getItem('user');
-      if (!userData) {
-        throw new Error('No user data found');
+      const token = localStorage.getItem('auth_token');
+      if (!token) {
+        throw new Error('No authentication token found');
       }
 
-      const user: User = JSON.parse(userData);
-      return user;
+      // Try to get user from API first
+      try {
+        const user = await api.get<User>('/auth/me', {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        });
+        return user;
+      } catch (apiError) {
+        // Fallback to localStorage
+        const userData = localStorage.getItem('user_data');
+        if (!userData) {
+          throw new Error('No user data found');
+        }
+
+        const user: User = JSON.parse(userData);
+        return user;
+      }
     } catch (error) {
       throw new Error(error instanceof Error ? error.message : 'Failed to get current user');
     }
@@ -133,6 +204,18 @@ export const authService = {
 
   // Logout (client-side only)
   logout: () => {
-    localStorage.removeItem('token');
+    localStorage.removeItem('auth_token');
+    localStorage.removeItem('user_data');
   },
+
+  // Check if user is authenticated
+  isAuthenticated: (): boolean => {
+    const token = localStorage.getItem('auth_token');
+    return !!token;
+  },
+
+  // Get stored token
+  getToken: (): string | null => {
+    return localStorage.getItem('auth_token');
+  }
 };

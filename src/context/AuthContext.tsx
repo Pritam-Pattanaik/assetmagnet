@@ -22,8 +22,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Check for existing token on mount
   useEffect(() => {
     const initializeAuth = async () => {
-      const token = localStorage.getItem('token');
-      const userData = localStorage.getItem('user');
+      const token = localStorage.getItem('auth_token');
+      const userData = localStorage.getItem('user_data');
 
       console.log('Initializing auth...', { token: !!token, userData: !!userData });
 
@@ -40,8 +40,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         } catch (error) {
           console.error('Error parsing user data:', error);
           // Invalid data, clear everything
-          localStorage.removeItem('token');
-          localStorage.removeItem('user');
+          authService.logout();
           setAuthState({
             user: null,
             token: null,
@@ -69,8 +68,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const { user, token } = await authService.login(email, password);
       console.log('Login successful:', { user, token });
-      localStorage.setItem('token', token);
-      localStorage.setItem('user', JSON.stringify(user));
+      // Token and user data are already stored in authService.login
       setAuthState({
         user,
         token,
@@ -90,8 +88,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setAuthState(prev => ({ ...prev, isLoading: true }));
     try {
       const { user, token } = await authService.register(name, email, password, role);
-      localStorage.setItem('token', token);
-      localStorage.setItem('user', JSON.stringify(user));
+      // Token and user data are already stored in authService.register
       setAuthState({
         user,
         token,
@@ -107,8 +104,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = () => {
     console.log('Logging out user');
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+    authService.logout();
     setAuthState({
       user: null,
       token: null,
